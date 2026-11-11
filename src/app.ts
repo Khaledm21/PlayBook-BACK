@@ -26,7 +26,7 @@ export const createApp = (): Application => {
     cors({
       origin: (origin, callback) => {
         if (!origin) return callback(null, true);
-        if (allowedOrigins.includes(origin) || env.NODE_ENV === 'development') {
+        if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app') || env.NODE_ENV === 'development') {
           return callback(null, true);
         }
         return callback(new Error('غير مسموح بالوصول من هذا المصدر عبر سياسة CORS'));
