@@ -1,0 +1,12 @@
+node_modules/
+dist/
+uploads/*
+!uploads/.gitkeep
+prisma/*.db
+prisma/*.db-journal
+.env
+
+
+*.db
+*.db-journal
+**/*.db

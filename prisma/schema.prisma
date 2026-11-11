@@ -1,0 +1,280 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String           @id @default(cuid())
+  name               String
+  email              String           @unique
+  phone              String           @unique
+  passwordHash       String
+  avatar             String?
+  city               String?
+  role               String           @default("USER") // USER, VENUE_OWNER, ADMIN
+  status             String           @default("ACTIVE") // ACTIVE, SUSPENDED
+  preferredPitchType String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  refreshTokens      RefreshToken[]
+  venues             Venue[]
+  bookings           Booking[]
+  reviews            Review[]
+  notifications      Notification[]
+  auditLogs          AuditLog[]
+  subscription       Subscription?
+  transactions       PaymentTransaction[]
+
+  @@index([role])
+  @@index([status])
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Venue {
+  id              String        @id @default(cuid())
+  name            String
+  slug            String        @unique
+  tagline         String?
+  description     String
+  ownerId         String
+  owner           User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  city            String
+  area            String
+  address         String
+  latitude        Float?
+  longitude       Float?
+  rating          Float         @default(0.0)
+  reviewCount     Int           @default(0)
+  images          String        @default("[]") // JSON string of string[]
+  facilities      String        @default("[]") // JSON string of string[]
+  phone           String
+  whatsapp        String?
+  verified        Boolean       @default(false)
+  status          String        @default("ACTIVE") // ACTIVE, PENDING, REJECTED, SUSPENDED
+  featured        Boolean       @default(false)
+  popular         Boolean       @default(false)
+  minPricePerHour Float         @default(0.0)
+  openingHours    String        @default("{\"open\":\"08:00\",\"close\":\"02:00\"}") // JSON string
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  pitches         Pitch[]
+  bookings        Booking[]
+  reviews         Review[]
+  blockedSlots    BlockedSlot[]
+
+  @@index([city])
+  @@index([ownerId])
+  @@index([status])
+}
+
+model Pitch {
+  id                   String        @id @default(cuid())
+  venueId              String
+  venue                Venue         @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  name                 String
+  type                 String        // 5-a-side, 7-a-side, 8-a-side, 11-a-side
+  turfType             String        // Artificial Grass 5G, Natural, Hybrid
+  isIndoor             Boolean       @default(false)
+  hasNightLighting     Boolean       @default(true)
+  capacity             Int           @default(10)
+  basePricePerHour     Float
+  peakPricePerHour     Float
+  weekendPricePerHour  Float
+  isActive             Boolean       @default(true)
+  features             String?       // JSON string
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  bookings             Booking[]
+  blockedSlots         BlockedSlot[]
+
+  @@index([venueId])
+  @@index([type])
+}
+
+model Booking {
+  id               String               @id @default(cuid())
+  bookingReference String               @unique
+  slotLockKey      String               @unique // ${pitchId}_${date}_${startTime}
+  userId           String
+  user             User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  venueId          String
+  venue            Venue                @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  pitchId          String
+  pitch            Pitch                @relation(fields: [pitchId], references: [id], onDelete: Cascade)
+  pitchName        String
+  pitchType        String
+  venueName        String
+  venueCity        String
+  venueAddress     String
+  venueImage       String?
+  userName         String
+  userPhone        String
+  date             String               // YYYY-MM-DD
+  startTime        String               // HH:mm
+  endTime          String               // HH:mm
+  displayTime      String               // e.g. 06:00 PM - 07:00 PM
+  durationHours    Float                @default(1.0)
+  pitchPrice       Float
+  serviceFee       Float                @default(0.0)
+  totalAmount      Float
+  paymentMethod    String               // PAY_AT_VENUE, INSTAPAY, VODAFONE_CASH, CREDIT_CARD
+  paymentStatus    String               @default("PENDING") // PENDING, PAID, FAILED, REFUNDED
+  status           String               @default("UPCOMING") // UPCOMING, COMPLETED, CANCELLED, NO_SHOW
+  paymentExpiresAt DateTime?
+  notes            String?
+  hasReviewed      Boolean              @default(false)
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  transactions     PaymentTransaction[]
+  review           Review?
+
+  @@index([userId])
+  @@index([venueId])
+  @@index([pitchId])
+  @@index([date])
+  @@index([status])
+}
+
+model PaymentTransaction {
+  id                   String   @id @default(cuid())
+  bookingId            String
+  booking              Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount               Float
+  currency             String   @default("EGP")
+  paymentMethod        String
+  provider             String?  // InstaPay, VodafoneCash, Paymob, etc.
+  transactionReference String   @unique
+  status               String   @default("PENDING") // PENDING, SUCCESS, FAILED, REFUNDED
+  gatewayResponse      String?  // JSON string
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([bookingId])
+  @@index([userId])
+}
+
+model BlockedSlot {
+  id        String   @id @default(cuid())
+  venueId   String
+  venue     Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  pitchId   String
+  pitch     Pitch    @relation(fields: [pitchId], references: [id], onDelete: Cascade)
+  date      String   // YYYY-MM-DD
+  time      String   // HH:mm
+  reason    String?
+  blockedBy String   // user ID or "OWNER"
+  createdAt DateTime @default(now())
+
+  @@unique([pitchId, date, time])
+  @@index([venueId])
+}
+
+model Plan {
+  id            String         @id @default(cuid())
+  name          String
+  slug          String         @unique // basic, pro, business, enterprise
+  description   String
+  price         Float
+  billingPeriod String         @default("monthly")
+  maxVenues     Int
+  features      String         @default("[]") // JSON string of features
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id                String    @id @default(cuid())
+  ownerId           String    @unique
+  owner             User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  planId            String
+  plan              Plan      @relation(fields: [planId], references: [id], onDelete: Restrict)
+  status            String    @default("ACTIVE") // ACTIVE, EXPIRED, CANCELLED, SUSPENDED
+  startsAt          DateTime  @default(now())
+  expiresAt         DateTime
+  maxVenuesOverride Int?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([planId])
+}
+
+model Review {
+  id                String    @id @default(cuid())
+  venueId           String
+  venue             Venue     @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  bookingId         String?   @unique
+  booking           Booking?  @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userName          String
+  userAvatar        String?
+  rating            Float
+  pitchQuality      Float?
+  cleanliness       Float?
+  staff             Float?
+  lighting          Float?
+  comment           String
+  ownerReplyComment String?
+  ownerReplyDate    DateTime?
+  status            String    @default("APPROVED") // APPROVED, PENDING, REJECTED
+  verifiedBooking   Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+
+  @@index([venueId])
+  @@index([userId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String   // BOOKING_CONFIRMED, PAYMENT_SUCCESS, REMINDER, SYSTEM
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String   // CREATE_BOOKING, CANCEL_BOOKING, UPGRADE_PLAN, SUSPEND_USER, etc.
+  entity    String   // Booking, User, Subscription, Venue, etc.
+  entityId  String?
+  details   String?  // JSON string
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+}
+
