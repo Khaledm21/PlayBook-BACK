@@ -20,6 +20,12 @@ router.get(
   BookingController.getAvailability
 );
 
+// Blocked slots
+router.get(
+  '/blocked-slots',
+  BookingController.getBlockedSlots
+);
+
 // All following routes require authentication
 router.use(authenticateToken);
 
@@ -51,6 +57,22 @@ router.patch(
   BookingController.cancelBooking
 );
 
+// Update booking status (Owner / Admin)
+router.patch(
+  '/:id/status',
+  requireRoles('VENUE_OWNER', 'ADMIN'),
+  validate({ params: bookingIdParamSchema }),
+  BookingController.updateStatus
+);
+
+// Confirm cash payment (Owner / Admin)
+router.patch(
+  '/:id/confirm-payment',
+  requireRoles('VENUE_OWNER', 'ADMIN'),
+  validate({ params: bookingIdParamSchema }),
+  BookingController.confirmPayment
+);
+
 // 6. Block slot (Owner / Admin)
 router.post(
   '/block-slot',
@@ -60,6 +82,12 @@ router.post(
 );
 
 // 7. Unblock slot (Owner / Admin)
+router.delete(
+  '/block-slot',
+  requireRoles('VENUE_OWNER', 'ADMIN'),
+  BookingController.unblockSlot
+);
+
 router.delete(
   '/block-slot/:id',
   requireRoles('VENUE_OWNER', 'ADMIN'),

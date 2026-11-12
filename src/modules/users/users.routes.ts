@@ -57,5 +57,12 @@ router.patch(
   UserController.updateRole
 );
 
+router.patch(
+  '/:id',
+  requireRoles('ADMIN'),
+  validate({ params: userIdParamSchema }),
+  UserController.updateUser
+);
+
 export const userRoutes = router;
 

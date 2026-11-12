@@ -64,7 +64,7 @@ export const createApp = (): Application => {
         environment: env.NODE_ENV,
         database: {
           status: 'CONNECTED',
-          provider: 'SQLite (dev.db)',
+          provider: 'PostgreSQL (Neon)',
           latencyMs: dbLatencyMs,
         },
         memory: {

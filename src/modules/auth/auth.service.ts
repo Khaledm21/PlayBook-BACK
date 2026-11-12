@@ -10,6 +10,7 @@ import {
 } from '../../utils/errors';
 import { LoginInput, RegisterInput } from './auth.schema';
 import { AuditLogService } from '../audit_logs/audit_logs.service';
+import { normalizePhoneNumber, getPhoneSearchVariants } from '../../utils/phone';
 
 const ACCESS_TOKEN_EXPIRY = '15m';
 const REFRESH_TOKEN_EXPIRY_DAYS = 7;
@@ -44,8 +45,13 @@ export class AuthService {
       throw new ConflictError('البريد الإلكتروني مسجل بالفعل لمستخدم آخر');
     }
 
-    const existingPhone = await prisma.user.findUnique({
-      where: { phone: input.phone },
+    const normalizedPhone = normalizePhoneNumber(input.phone);
+    const phoneVariants = getPhoneSearchVariants(input.phone);
+
+    const existingPhone = await prisma.user.findFirst({
+      where: {
+        phone: { in: phoneVariants },
+      },
     });
     if (existingPhone) {
       throw new ConflictError('رقم الهاتف مسجل بالفعل لمستخدم آخر');
@@ -57,7 +63,7 @@ export class AuthService {
       data: {
         name: input.name,
         email: input.email.toLowerCase(),
-        phone: input.phone,
+        phone: normalizedPhone,
         passwordHash,
         role: input.role,
         city: input.city || null,
@@ -130,9 +136,11 @@ export class AuthService {
 
   static async login(input: LoginInput, ip?: string, userAgent?: string) {
     const identifier = input.emailOrPhone.trim().toLowerCase();
+    const phoneVariants = getPhoneSearchVariants(input.emailOrPhone);
+
     const user = await prisma.user.findFirst({
       where: {
-        OR: [{ email: identifier }, { phone: input.emailOrPhone.trim() }],
+        OR: [{ email: identifier }, { phone: { in: phoneVariants } }],
       },
     });
 

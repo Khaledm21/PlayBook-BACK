@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { BookingService } from './bookings.service';
 import { sendSuccess } from '../../utils/response';
+import { BadRequestError } from '../../utils/errors';
 import {
   BlockSlotInput,
   CreateBookingInput,
@@ -88,11 +89,59 @@ export class BookingController {
   static async unblockSlot(req: Request, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
+      const { pitchId, date, time, startTime } = req.body || {};
+      const targetTime = time || startTime;
       const userId = req.user!.userId;
       const userRole = req.user!.role;
-      await BookingService.unblockSlot(id, userId, userRole);
+
+      if (id) {
+        await BookingService.unblockSlot(id, userId, userRole);
+      } else if (pitchId && date && targetTime) {
+        await BookingService.unblockSlotByDetails(pitchId, date, targetTime, userId, userRole);
+      } else {
+        throw new BadRequestError('يرجى تحديد معرف الحظر أو بيانات الملعب والموعد');
+      }
 
       return sendSuccess(res, { success: true }, 200, 'تم فك حظر الموعد بنجاح');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getBlockedSlots(req: Request, res: Response, next: NextFunction) {
+    try {
+      const pitchId = req.query.pitchId as string | undefined;
+      const date = req.query.date as string | undefined;
+      const slots = await BookingService.getBlockedSlots(pitchId, date);
+
+      return sendSuccess(res, slots, 200, 'تم استرجاع المواعيد المحظورة بنجاح');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateStatus(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+      const userId = req.user!.userId;
+      const userRole = req.user!.role;
+      const updated = await BookingService.updateStatus(id, status, userId, userRole);
+
+      return sendSuccess(res, updated, 200, `تم تحديث حالة الحجز إلى ${status} بنجاح`);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async confirmPayment(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { id } = req.params;
+      const userId = req.user!.userId;
+      const userRole = req.user!.role;
+      const result = await BookingService.confirmPayment(id, userId, userRole);
+
+      return sendSuccess(res, result, 200, result.message);
     } catch (error) {
       next(error);
     }

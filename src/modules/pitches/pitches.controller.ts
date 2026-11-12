@@ -65,5 +65,17 @@ export class PitchController {
       next(error);
     }
   }
+
+  static async getCalendar(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { id } = req.params;
+      const date = (req.query.date as string) || new Date().toISOString().split('T')[0];
+      const calendar = await PitchService.getCalendar(id, date);
+
+      return sendSuccess(res, calendar, 200, 'تم استرجاع جدول المواعيد بنجاح');
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 

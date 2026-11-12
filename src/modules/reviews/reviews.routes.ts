@@ -12,6 +12,9 @@ import {
 
 const router = Router();
 
+// Public: get all reviews or filter by venueId
+router.get('/', ReviewController.getAllReviews);
+
 // Public: get venue reviews
 router.get(
   '/venue/:venueId',
@@ -34,6 +37,24 @@ router.post(
   requireRoles('VENUE_OWNER', 'ADMIN'),
   validate({ params: reviewIdParamSchema, body: replyReviewSchema }),
   ReviewController.replyToReview
+);
+
+// Protected: admin update status
+router.patch(
+  '/:id/status',
+  authenticateToken,
+  requireRoles('ADMIN'),
+  validate({ params: reviewIdParamSchema }),
+  ReviewController.updateStatus
+);
+
+// Protected: admin delete review
+router.delete(
+  '/:id',
+  authenticateToken,
+  requireRoles('ADMIN'),
+  validate({ params: reviewIdParamSchema }),
+  ReviewController.deleteReview
 );
 
 export const reviewRoutes = router;

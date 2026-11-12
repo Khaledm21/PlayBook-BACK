@@ -60,5 +60,21 @@ router.post(
   VenueController.uploadImages
 );
 
+router.patch(
+  '/:id/status',
+  authenticateToken,
+  requireRoles('VENUE_OWNER', 'ADMIN'),
+  validate({ params: venueIdParamSchema }),
+  VenueController.updateStatus
+);
+
+router.post(
+  '/:id/pitches',
+  authenticateToken,
+  requireRoles('VENUE_OWNER', 'ADMIN'),
+  validate({ params: venueIdParamSchema }),
+  VenueController.createPitch
+);
+
 export const venueRoutes = router;
 

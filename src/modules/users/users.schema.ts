@@ -1,10 +1,13 @@
 import { z } from 'zod';
+import { isFlexibleEgyptianPhone } from '../../utils/phone';
 
 export const updateProfileSchema = z.object({
   name: z.string().min(2, 'الاسم يجب أن لا يقل عن حرفين').optional(),
   phone: z
     .string()
-    .regex(/^(\+20|0)?1[0125][0-9]{8}$/, 'يرجى إدخال رقم هاتف مصري صحيح')
+    .refine((val) => isFlexibleEgyptianPhone(val), {
+      message: 'يرجى إدخال رقم هاتف مصري صحيح (مثال: 01012345678 أو +20 10...)',
+    })
     .optional(),
   city: z.string().optional(),
   preferredPitchType: z.string().optional(),

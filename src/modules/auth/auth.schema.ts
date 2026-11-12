@@ -1,12 +1,15 @@
 import { z } from 'zod';
+import { isFlexibleEgyptianPhone } from '../../utils/phone';
 
 export const registerSchema = z.object({
   name: z.string().min(2, 'الاسم يجب أن لا يقل عن حرفين'),
   email: z.string().email('البريد الإلكتروني غير صالح'),
   phone: z
     .string()
-    .min(10, 'رقم الهاتف يجب أن يتكون من 10 أرقام على الأقل')
-    .regex(/^(\+20|0)?1[0125][0-9]{8}$/, 'يرجى إدخال رقم هاتف مصري صحيح (مثال: 01012345678)'),
+    .min(8, 'رقم الهاتف يجب أن يتكون من 8 أرقام على الأقل')
+    .refine((val) => isFlexibleEgyptianPhone(val), {
+      message: 'يرجى إدخال رقم هاتف مصري صحيح (مثال: 01012345678 أو +20 10...)',
+    }),
   password: z.string().min(6, 'كلمة المرور يجب أن لا تقل عن 6 أحرف'),
   role: z.enum(['USER', 'VENUE_OWNER']).default('USER'),
   city: z.string().optional(),

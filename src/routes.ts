@@ -9,6 +9,8 @@ import { subscriptionRoutes } from './modules/subscriptions/subscriptions.routes
 import { reviewRoutes } from './modules/reviews/reviews.routes';
 import { notificationRoutes } from './modules/notifications/notifications.routes';
 import { auditLogRoutes } from './modules/audit_logs/audit_logs.routes';
+import { adminRoutes } from './modules/admin/admin.routes';
+import { ownerRoutes } from './modules/owner/owner.routes';
 
 const router = Router();
 
@@ -22,6 +24,8 @@ router.use('/subscriptions', subscriptionRoutes);
 router.use('/reviews', reviewRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/audit-logs', auditLogRoutes);
+router.use('/admin', adminRoutes);
+router.use('/owner', ownerRoutes);
 
 export default router;
 

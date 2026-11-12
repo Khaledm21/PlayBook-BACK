@@ -547,5 +547,120 @@ export class BookingService {
 
     return true;
   }
+
+  static async unblockSlotByDetails(
+    pitchId: string,
+    date: string,
+    time: string,
+    userId: string,
+    userRole: string
+  ) {
+    const slot = await prisma.blockedSlot.findFirst({
+      where: { pitchId, date, time },
+      include: { venue: true },
+    });
+
+    if (!slot) {
+      throw new NotFoundError('فترة الحظر غير موجودة');
+    }
+
+    if (userRole !== 'ADMIN' && slot.venue.ownerId !== userId) {
+      throw new ForbiddenError('غير مصرح لك بإلغاء حظر هذه الفترة');
+    }
+
+    await prisma.blockedSlot.delete({ where: { id: slot.id } });
+
+    await AuditLogService.log({
+      userId,
+      action: 'UNBLOCK_SLOT',
+      entity: 'BlockedSlot',
+      entityId: slot.id,
+      details: { pitchId, date, time },
+    });
+
+    return true;
+  }
+
+  static async getBlockedSlots(pitchId?: string, date?: string) {
+    const where: any = {};
+    if (pitchId) where.pitchId = pitchId;
+    if (date) where.date = date;
+
+    return await prisma.blockedSlot.findMany({
+      where,
+      orderBy: [{ date: 'asc' }, { time: 'asc' }],
+    });
+  }
+
+  static async updateStatus(
+    bookingId: string,
+    status: string,
+    userId: string,
+    userRole: string
+  ) {
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { venue: true },
+    });
+
+    if (!booking) {
+      throw new NotFoundError('الحجز غير موجود');
+    }
+
+    if (userRole !== 'ADMIN' && booking.venue.ownerId !== userId) {
+      throw new ForbiddenError('غير مصرح لك بتعديل حالة هذا الحجز');
+    }
+
+    const updated = await prisma.booking.update({
+      where: { id: bookingId },
+      data: { status },
+    });
+
+    await AuditLogService.log({
+      userId,
+      action: 'UPDATE_BOOKING_STATUS',
+      entity: 'Booking',
+      entityId: bookingId,
+      details: { oldStatus: booking.status, newStatus: status },
+    });
+
+    return updated;
+  }
+
+  static async confirmPayment(bookingId: string, userId: string, userRole: string) {
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { venue: true },
+    });
+
+    if (!booking) {
+      throw new NotFoundError('الحجز غير موجود');
+    }
+
+    if (userRole !== 'ADMIN' && booking.venue.ownerId !== userId) {
+      throw new ForbiddenError('غير مصرح لك بتأكيد دفع هذا الحجز');
+    }
+
+    const updated = await prisma.booking.update({
+      where: { id: bookingId },
+      data: {
+        paymentStatus: 'PAID',
+      },
+    });
+
+    await AuditLogService.log({
+      userId,
+      action: 'CONFIRM_CASH_PAYMENT',
+      entity: 'Booking',
+      entityId: bookingId,
+      details: { totalAmount: booking.totalAmount },
+    });
+
+    return {
+      success: true,
+      message: 'تم تأكيد استلام المبلغ النقدي بنجاح',
+      booking: updated,
+    };
+  }
 }
 

@@ -24,6 +24,12 @@ router.get(
   PitchController.getPitchById
 );
 
+router.get(
+  '/:id/calendar',
+  validate({ params: pitchIdParamSchema }),
+  PitchController.getCalendar
+);
+
 // Protected Pitch Management (Owner / Admin)
 router.post(
   '/',
@@ -34,6 +40,14 @@ router.post(
 );
 
 router.put(
+  '/:id',
+  authenticateToken,
+  requireRoles('VENUE_OWNER', 'ADMIN'),
+  validate({ params: pitchIdParamSchema, body: updatePitchSchema }),
+  PitchController.updatePitch
+);
+
+router.patch(
   '/:id',
   authenticateToken,
   requireRoles('VENUE_OWNER', 'ADMIN'),

@@ -165,5 +165,80 @@ export class ReviewService {
       },
     };
   }
+
+  static async getAllReviews(query: any = {}) {
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 50;
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+    if (query.venueId) where.venueId = query.venueId;
+    if (query.status && query.status !== 'ALL') where.status = query.status;
+
+    const [total, reviews] = await Promise.all([
+      prisma.review.count({ where }),
+      prisma.review.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          venue: {
+            select: { id: true, name: true, city: true },
+          },
+        },
+      }),
+    ]);
+
+    return {
+      reviews,
+      pagination: {
+        page,
+        pageSize: limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  static async updateStatus(reviewId: string, status: string, adminId: string) {
+    const review = await prisma.review.findUnique({ where: { id: reviewId } });
+    if (!review) {
+      throw new NotFoundError('التقييم غير موجود');
+    }
+
+    const updated = await prisma.review.update({
+      where: { id: reviewId },
+      data: { status },
+    });
+
+    await AuditLogService.log({
+      userId: adminId,
+      action: 'UPDATE_REVIEW_STATUS',
+      entity: 'Review',
+      entityId: reviewId,
+      details: { oldStatus: review.status, newStatus: status },
+    });
+
+    return updated;
+  }
+
+  static async deleteReview(reviewId: string, adminId: string) {
+    const review = await prisma.review.findUnique({ where: { id: reviewId } });
+    if (!review) {
+      throw new NotFoundError('التقييم غير موجود');
+    }
+
+    await prisma.review.delete({ where: { id: reviewId } });
+
+    await AuditLogService.log({
+      userId: adminId,
+      action: 'DELETE_REVIEW',
+      entity: 'Review',
+      entityId: reviewId,
+    });
+
+    return true;
+  }
 }
 

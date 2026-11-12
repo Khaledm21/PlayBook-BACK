@@ -2,6 +2,7 @@ import { prisma } from '../../db/prisma';
 import { ConflictError, NotFoundError } from '../../utils/errors';
 import { AuditLogService } from '../audit_logs/audit_logs.service';
 import { GetUsersQuery, UpdateProfileInput } from './users.schema';
+import { normalizePhoneNumber, getPhoneSearchVariants } from '../../utils/phone';
 
 export class UserService {
   static async getUsers(query: GetUsersQuery) {
@@ -98,15 +99,18 @@ export class UserService {
 
   static async updateProfile(userId: string, data: UpdateProfileInput) {
     if (data.phone) {
+      const normalizedPhone = normalizePhoneNumber(data.phone);
+      const phoneVariants = getPhoneSearchVariants(data.phone);
       const existing = await prisma.user.findFirst({
         where: {
-          phone: data.phone,
+          phone: { in: phoneVariants },
           NOT: { id: userId },
         },
       });
       if (existing) {
         throw new ConflictError('رقم الهاتف مسجل بالفعل لمستخدم آخر');
       }
+      data.phone = normalizedPhone;
     }
 
     return await prisma.user.update({
@@ -194,6 +198,54 @@ export class UserService {
       entity: 'User',
       entityId: userId,
       details: { oldRole: user.role, newRole: role },
+    });
+
+    return updated;
+  }
+
+  static async updateUser(userId: string, data: any, adminId: string) {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundError('المستخدم غير موجود');
+    }
+
+    if (data.status) {
+      return this.updateStatus(userId, data.status, adminId);
+    }
+
+    if (data.role) {
+      return this.updateRole(userId, data.role, adminId);
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(data.name && { name: data.name }),
+        ...(data.phone && { phone: data.phone }),
+        ...(data.city !== undefined && { city: data.city }),
+        ...(data.preferredPitchType !== undefined && { preferredPitchType: data.preferredPitchType }),
+        ...(data.avatar !== undefined && { avatar: data.avatar }),
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        status: true,
+        avatar: true,
+        city: true,
+        preferredPitchType: true,
+        updatedAt: true,
+      },
+    });
+
+    await AuditLogService.log({
+      userId: adminId,
+      action: 'UPDATE_USER',
+      entity: 'User',
+      entityId: userId,
+      details: data,
     });
 
     return updated;

@@ -80,5 +80,17 @@ export class UserController {
       next(error);
     }
   }
+
+  static async updateUser(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { id } = req.params;
+      const adminId = req.user!.userId;
+      const updated = await UserService.updateUser(id, req.body, adminId);
+
+      return sendSuccess(res, updated, 200, 'تم تحديث بيانات المستخدم بنجاح');
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 

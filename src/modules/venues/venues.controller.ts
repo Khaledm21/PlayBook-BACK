@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { VenueService } from './venues.service';
+import { PitchService } from '../pitches/pitches.service';
 import { sendSuccess } from '../../utils/response';
 import { CreateVenueInput, GetVenuesQuery, UpdateVenueInput } from './venues.schema';
 import { BadRequestError } from '../../utils/errors';
@@ -93,6 +94,34 @@ export class VenueController {
       const updated = await VenueService.addImages(id, ownerId, isAdmin, imageUrls);
 
       return sendSuccess(res, updated, 200, 'تم رفع الصور بنجاح');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateStatus(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+      const userId = req.user!.userId;
+      const isAdmin = req.user!.role === 'ADMIN';
+      const updated = await VenueService.updateStatus(id, status, userId, isAdmin);
+
+      return sendSuccess(res, updated, 200, `تم تغيير حالة المجمع إلى ${status} بنجاح`);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async createPitch(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { id } = req.params;
+      const ownerId = req.user!.userId;
+      const isAdmin = req.user!.role === 'ADMIN';
+      const pitchInput = { ...req.body, venueId: id };
+      const pitch = await PitchService.createPitch(ownerId, isAdmin, pitchInput);
+
+      return sendSuccess(res, pitch, 201, 'تم إضافة الملعب بنجاح');
     } catch (error) {
       next(error);
     }

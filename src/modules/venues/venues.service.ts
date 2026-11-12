@@ -45,7 +45,7 @@ export class VenueService {
           create:
             input.pitches && input.pitches.length > 0
               ? input.pitches.map((p) => ({
-                  name: p.name || '?????? ???????',
+                  name: p.name?.trim() || 'الملعب الرئيسي',
                   type: p.type || '7-a-side',
                   turfType: p.turfType || 'Artificial Grass (5G)',
                   isIndoor: p.isIndoor ?? false,
@@ -59,7 +59,7 @@ export class VenueService {
                 }))
               : [
                   {
-                    name: '?????? ???????',
+                    name: 'الملعب الرئيسي',
                     type: '7-a-side',
                     turfType: 'Artificial Grass (5G)',
                     isIndoor: false,
