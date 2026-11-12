@@ -84,6 +84,7 @@ export const createApp = (): Application => {
 
   // 6. Mount API Routes
   app.use('/api', apiRoutes);
+  app.use('/', apiRoutes);
 
   // 7. Handle 404 for undefined routes
   app.use((req: Request, _res: Response, next: NextFunction) => {
