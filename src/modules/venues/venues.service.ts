@@ -41,6 +41,41 @@ export class VenueService {
         minPricePerHour: input.minPricePerHour || 0,
         openingHours: JSON.stringify(input.openingHours || { open: '08:00', close: '02:00' }),
         status: 'ACTIVE',
+        pitches: {
+          create:
+            input.pitches && input.pitches.length > 0
+              ? input.pitches.map((p) => ({
+                  name: p.name || '?????? ???????',
+                  type: p.type || '7-a-side',
+                  turfType: p.turfType || 'Artificial Grass (5G)',
+                  isIndoor: p.isIndoor ?? false,
+                  hasNightLighting: p.hasNightLighting ?? true,
+                  capacity: p.capacity || 14,
+                  basePricePerHour: p.basePricePerHour || input.minPricePerHour || 300,
+                  peakPricePerHour: p.peakPricePerHour || (p.basePricePerHour ? p.basePricePerHour + 80 : 380),
+                  weekendPricePerHour: p.weekendPricePerHour || (p.basePricePerHour ? p.basePricePerHour + 50 : 350),
+                  isActive: true,
+                  features: JSON.stringify(p.features || ['Night Lighting']),
+                }))
+              : [
+                  {
+                    name: '?????? ???????',
+                    type: '7-a-side',
+                    turfType: 'Artificial Grass (5G)',
+                    isIndoor: false,
+                    hasNightLighting: true,
+                    capacity: 14,
+                    basePricePerHour: input.minPricePerHour || 300,
+                    peakPricePerHour: (input.minPricePerHour || 300) + 80,
+                    weekendPricePerHour: (input.minPricePerHour || 300) + 50,
+                    isActive: true,
+                    features: JSON.stringify(['Night Lighting']),
+                  },
+                ],
+        },
+      },
+      include: {
+        pitches: true,
       },
     });
 
@@ -283,6 +318,32 @@ export class VenueService {
     const updated = await prisma.venue.update({
       where: { id: venueId },
       data: { images: JSON.stringify(merged) },
+    });
+
+    return this.formatVenue(updated);
+  }
+
+  static async updateStatus(venueId: string, status: string, userId: string, isAdmin: boolean) {
+    const venue = await prisma.venue.findUnique({ where: { id: venueId } });
+    if (!venue) {
+      throw new NotFoundError('مجمع الملاعب غير موجود');
+    }
+
+    if (!isAdmin && venue.ownerId !== userId) {
+      throw new ForbiddenError('غير مصرح لك بتغيير حالة هذا المجمع');
+    }
+
+    const updated = await prisma.venue.update({
+      where: { id: venueId },
+      data: { status },
+    });
+
+    await AuditLogService.log({
+      userId,
+      action: 'UPDATE_VENUE_STATUS',
+      entity: 'Venue',
+      entityId: venueId,
+      details: { oldStatus: venue.status, newStatus: status },
     });
 
     return this.formatVenue(updated);
